@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>شخبط 🎨</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-shakhbat-192.png">
+<link rel="shortcut icon" href="favicon.ico">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="شخبط">
@@ -334,7 +337,7 @@ body::after{
       <div class="splash-color-dot"></div>
       <div class="splash-color-dot"></div>
     </div>
-    <button class="splash-btn" onclick="goSetup()">🖌️ العب الآن!</button>
+    <button class="splash-btn" onclick="unlockAudio();goSetup();playMusic('setup')">🖌️ العب الآن!</button>
     <div class="splash-creator">تصميم وتطوير: <span>أسامة النعيمي</span></div>
   </div>
 </div>
@@ -516,49 +519,40 @@ if('serviceWorker' in navigator){
 }
 
 /* ══ BACKGROUND MUSIC ══ */
-let bgMusicNode=null, bgMusicGain=null, bgMusicCtx=null;
+let currentAudio = null;
+let audioUnlocked = false;
 
-function getBgCtx(){if(!bgMusicCtx)bgMusicCtx=new(window.AudioContext||window.webkitAudioContext)();return bgMusicCtx;}
+const MUSIC = {
+  setup: 'music_setup.mp3',
+  draw:  'music_draw.mp3',
+  win:   'music_win.mp3'
+};
 
-function playMusic(type){
-  stopMusic();
-  try{
-    const c=getBgCtx();
-    bgMusicGain=c.createGain();
-    bgMusicGain.gain.value=0.08;
-    bgMusicGain.connect(c.destination);
-
-    const patterns={
-      setup:[523,659,784,659,523,659,784,1047],
-      draw:[392,523,659,523,392,523,392,330],
-      win:[523,659,784,1047,784,659,523,659,784,1047]
-    };
-    const notes=patterns[type]||patterns.setup;
-    const tempo=type==='draw'?0.3:0.4;
-
-    function playLoop(startTime, loop){
-      notes.forEach((freq,i)=>{
-        const o=c.createOscillator();
-        const g=c.createGain();
-        o.connect(g);g.connect(bgMusicGain);
-        o.type='sine';o.frequency.value=freq;
-        const t=startTime+i*tempo;
-        g.gain.setValueAtTime(0,t);
-        g.gain.linearRampToValueAtTime(0.3,t+0.05);
-        g.gain.exponentialRampToValueAtTime(0.001,t+tempo*0.9);
-        o.start(t);o.stop(t+tempo);
-      });
-      const loopDur=notes.length*tempo;
-      if(loop<50){
-        setTimeout(()=>playLoop(c.currentTime+0.05, loop+1), loopDur*1000-200);
-      }
-    }
-    playLoop(c.currentTime+0.1, 0);
-  }catch(e){}
+function unlockAudio() {
+  // يُستدعى عند أول تفاعل لفتح AudioContext على iOS
+  audioUnlocked = true;
 }
 
-function stopMusic(){
-  try{if(bgMusicGain){bgMusicGain.gain.setValueAtTime(bgMusicGain.gain.value,getBgCtx().currentTime);bgMusicGain.gain.exponentialRampToValueAtTime(0.001,getBgCtx().currentTime+0.3);bgMusicGain=null;}}catch(e){}
+function playMusic(type) {
+  stopMusic();
+  if (!MUSIC[type]) return;
+  try {
+    const audio = new Audio(MUSIC[type]);
+    audio.loop = (type !== 'win'); // الفوز لا يلوب
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
+    currentAudio = audio;
+  } catch(e) {}
+}
+
+function stopMusic() {
+  try {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio = null;
+    }
+  } catch(e) {}
 }
 
 /* ══ AUDIO ══ */
@@ -713,7 +707,6 @@ function toggleCat(btn,cat){
 /* ══ GAME START ══ */
 function startGame(){
   SFX.start();
-  playMusic('setup');
   if(selectedCats.length===0){showToast('اختر فئة واحدة على الأقل!');return;}
   G.teams=[
     document.getElementById('team1Name').value||'الفريق الأحمر',

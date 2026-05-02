@@ -521,21 +521,22 @@ if('serviceWorker' in navigator){
 /* ══ BACKGROUND MUSIC ══ */
 let currentAudio = null;
 
-const MUSIC = {
-  setup: 'music_setup.mp3',
-  draw:  'music_draw.mp3',
-  win:   'music_win.mp3'
-};
-
 function playMusic(type) {
   stopMusic();
-  if (!MUSIC[type]) return;
+  const files = {
+    setup: 'music_setup.mp3',
+    draw: 'music_draw.mp3',
+    win: 'music_win.mp3'
+  };
+  if (!files[type]) return;
   try {
-    const audio = new Audio(MUSIC[type]);
+    const audio = new Audio();
+    audio.src = files[type];
     audio.loop = (type !== 'win');
     audio.volume = 0.5;
-    const playPromise = audio.play();
-    if (playPromise) playPromise.catch(() => {});
+    audio.load();
+    const p = audio.play();
+    if (p && p.catch) p.catch(() => {});
     currentAudio = audio;
   } catch(e) {}
 }
@@ -544,7 +545,7 @@ function stopMusic() {
   try {
     if (currentAudio) {
       currentAudio.pause();
-      currentAudio.currentTime = 0;
+      currentAudio.src = '';
       currentAudio = null;
     }
   } catch(e) {}
@@ -767,10 +768,11 @@ function showWordReveal(){
 /* ══ DRAWING ══ */
 function startDrawing(){
   stopMusic();
+  playMusic('draw');
   go('drawing');
   undoStack=[];
   G.savedDrawing=null;
-  setTimeout(()=>{initCanvas();startDrawTimer();playMusic('draw');},150);
+  setTimeout(()=>{initCanvas();startDrawTimer();},150);
 }
 
 function startDrawTimer(){

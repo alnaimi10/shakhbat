@@ -680,14 +680,8 @@ function toggleSound(){
   if(!soundOn){
     stopMusic();
   } else {
-    // أعد تشغيل الموسيقى المناسبة للشاشة الحالية
-    const currentScreen = document.querySelector('.scr.on');
-    if(currentScreen){
-      const id = currentScreen.id;
-      if(id === 'drawing') playMusic('draw');
-      else if(id === 'results') playMusic('win');
-      else playMusic('setup');
-    }
+    const id = document.querySelector('.scr.on')?.id;
+    playMusic(id === 'results' ? 'win' : 'draw');
   }
   showToast(soundOn ? '🔊 الصوت شغّال' : '🔇 الصوت مطفي');
 }
@@ -697,8 +691,8 @@ let currentAudio = null;
 const audioCache = {};
 
 function preloadAllMusic() {
-  const files = {setup:'music_setup.mp3', draw:'music_draw.mp3', win:'music_win.mp3'};
-  ['setup','draw','win'].forEach(type => {
+  const files = {draw:'music_draw.mp3', win:'music_win.mp3'};
+  ['draw','win'].forEach(type => {
     try {
       const a = new Audio(files[type]);
       a.volume = 0.5;
@@ -706,14 +700,15 @@ function preloadAllMusic() {
       audioCache[type] = a;
     } catch(e) {}
   });
-  // شغّل موسيقى الإعداد مباشرة بعد التحميل
-  playMusic('setup');
+  playMusic('draw');
 }
 
 function playMusic(type) {
   if(!soundOn) return;
+  // إذا موسيقى الرسم تشتغل بالفعل، لا توقفها
+  if(type === 'draw' && currentAudio && audioCache['draw'] && currentAudio === audioCache['draw'] && !currentAudio.paused) return;
   stopMusic();
-  const files = {setup:'music_setup.mp3', draw:'music_draw.mp3', win:'music_win.mp3'};
+  const files = {draw:'music_draw.mp3', win:'music_win.mp3'};
   if (!files[type]) return;
   try {
     const audio = audioCache[type] || new Audio(files[type]);
@@ -933,8 +928,6 @@ function showTurnAnnounce(){
 /* ══ WORD REVEAL ══ */
 function showWordReveal(){
   SFX.click();
-  stopMusic();
-  playMusic('draw');
   const cat=G.categories[Math.floor(Math.random()*G.categories.length)];
   const words=WORDS[cat];
   G.currentWord=words[Math.floor(Math.random()*words.length)];
@@ -987,7 +980,6 @@ function startDrawTimer(){
 /* ══ GUESSING - FIXED ══ */
 function showGuessing(){
   clearInterval(G.drawTimer);
-  stopMusic();
 
   // ✅ حفظ الرسمة قبل تغيير الشاشة
   const srcCanvas=document.getElementById('canvas');
@@ -1059,7 +1051,7 @@ function scorePoint(correct){
 
 /* ══ RESULTS ══ */
 function showResults(){
-  SFX.win();playMusic('win');spawnConfetti();spawnConfetti();
+  SFX.win();stopMusic();playMusic('win');spawnConfetti();spawnConfetti();
   const winner=G.scores[0]>G.scores[1]?0:G.scores[1]>G.scores[0]?1:-1;
   if(winner>=0){
     document.getElementById('resultsTitle').textContent='🏆 '+G.teams[winner]+' فاز!';
@@ -1096,7 +1088,7 @@ function showResults(){
   go('results');
 }
 
-function playAgain(){SFX.click();stopMusic();setTimeout(()=>playMusic('setup'),100);go('setup');}
+function playAgain(){SFX.click();stopMusic();setTimeout(()=>playMusic('draw'),100);go('setup');}
 
 /* ══ EFFECTS ══ */
 function showFlash(c){

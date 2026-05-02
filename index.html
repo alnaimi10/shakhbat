@@ -400,7 +400,9 @@ body::after{
 
 /* ══ SOUND CONTROL ══ */
 .sound-ctrl{
-  position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:14px;
+  position:fixed;
+  bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  left:14px;
   z-index:9999;
   background:rgba(0,0,0,.35);
   border:none;border-radius:50%;
@@ -412,6 +414,18 @@ body::after{
   box-shadow:0 2px 8px rgba(0,0,0,.3);
 }
 .sound-ctrl:active{transform:scale(.9);}
+.sound-ctrl.hidden{display:none;}
+
+/* زر الصوت داخل هيدر الرسم */
+.draw-sound-btn{
+  background:rgba(0,0,0,.25);
+  border:none;border-radius:50%;
+  width:34px;height:34px;
+  font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;transition:all .2s;flex-shrink:0;
+}
+.draw-sound-btn:active{transform:scale(.9);}
 </style>
 </head>
 <body>
@@ -554,7 +568,10 @@ body::after{
 <div id="drawing" class="scr">
   <div class="draw-header">
     <div class="draw-title">✏️ ارسم الآن!</div>
-    <div class="draw-timer-pill" id="drawTimerPill">60</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="draw-sound-btn" id="drawSoundBtn" onclick="toggleSound()">🔊</button>
+      <div class="draw-timer-pill" id="drawTimerPill">60</div>
+    </div>
   </div>
   <canvas id="canvas"></canvas>
   <div class="draw-toolbar" id="toolbar">
@@ -629,9 +646,11 @@ let soundOn = true;
 
 function toggleSound(){
   soundOn = !soundOn;
-  document.getElementById('soundCtrl').textContent = soundOn ? '🔊' : '🔇';
+  const icon = soundOn ? '🔊' : '🔇';
+  document.getElementById('soundCtrl').textContent = icon;
+  const drawBtn = document.getElementById('drawSoundBtn');
+  if(drawBtn) drawBtn.textContent = icon;
   if(!soundOn) stopMusic();
-  else if(currentAudio === null) playMusic('setup');
   showToast(soundOn ? '🔊 الصوت شغّال' : '🔇 الصوت مطفي');
 }
 
@@ -640,15 +659,17 @@ let currentAudio = null;
 const audioCache = {};
 
 function preloadAllMusic() {
+  const files = {setup:'music_setup.mp3', draw:'music_draw.mp3', win:'music_win.mp3'};
   ['setup','draw','win'].forEach(type => {
-    const files = {setup:'music_setup.mp3', draw:'music_draw.mp3', win:'music_win.mp3'};
     try {
       const a = new Audio(files[type]);
-      a.volume = 0;
-      a.play().then(() => { a.pause(); a.currentTime = 0; a.volume = 0.5; }).catch(()=>{});
+      a.volume = 0.5;
+      a.load();
       audioCache[type] = a;
     } catch(e) {}
   });
+  // شغّل موسيقى الإعداد مباشرة بعد التحميل
+  playMusic('setup');
 }
 
 function playMusic(type) {
@@ -812,9 +833,12 @@ function toggleEraser(el){
 function go(id){
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
   document.getElementById(id).classList.add('on');
+  // أخفِ زر الصوت الـ fixed أثناء الرسم فقط
+  const ctrl = document.getElementById('soundCtrl');
+  if(ctrl) ctrl.classList.toggle('hidden', id === 'drawing');
 }
 
-function goSetup(){SFX.click();playMusic('setup');go('setup');}
+function goSetup(){SFX.click();go('setup');}
 
 function addPlayer(team){
   const row=document.getElementById(`team${team}Players`);
@@ -1034,7 +1058,7 @@ function showResults(){
   go('results');
 }
 
-function playAgain(){SFX.click();stopMusic();playMusic('setup');go('setup');}
+function playAgain(){SFX.click();stopMusic();setTimeout(()=>playMusic('setup'),100);go('setup');}
 
 /* ══ EFFECTS ══ */
 function showFlash(c){

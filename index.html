@@ -749,6 +749,7 @@ function showTurnAnnounce(){
 /* ══ WORD REVEAL ══ */
 function showWordReveal(){
   SFX.click();
+  playMusic('draw'); // ✅ تشغيل موسيقى الرسم هنا — عند ضغطة المستخدم
   const cat=G.categories[Math.floor(Math.random()*G.categories.length)];
   const words=WORDS[cat];
   G.currentWord=words[Math.floor(Math.random()*words.length)];
@@ -778,8 +779,6 @@ function showWordReveal(){
 
 /* ══ DRAWING ══ */
 function startDrawing(){
-  stopMusic();
-  playMusic('draw');
   go('drawing');
   undoStack=[];
   G.savedDrawing=null;

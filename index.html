@@ -337,7 +337,7 @@ body::after{
       <div class="splash-color-dot"></div>
       <div class="splash-color-dot"></div>
     </div>
-    <button class="splash-btn" onclick="goSetup()">🖌️ العب الآن!</button>
+    <button class="splash-btn" onclick="preloadAllMusic();goSetup()">🖌️ العب الآن!</button>
     <div class="splash-creator">تصميم وتطوير: <span>أسامة النعيمي</span></div>
   </div>
 </div>
@@ -520,24 +520,35 @@ if('serviceWorker' in navigator){
 
 /* ══ BACKGROUND MUSIC ══ */
 let currentAudio = null;
+const audioCache = {};
+
+function preloadAllMusic() {
+  // تحميل كل الأغاني عند أول تفاعل حتى تعمل لاحقاً على iOS
+  ['setup','draw','win'].forEach(type => {
+    const files = {setup:'music_setup.mp3', draw:'music_draw.mp3', win:'music_win.mp3'};
+    try {
+      const a = new Audio(files[type]);
+      a.volume = 0;
+      a.play().then(() => { a.pause(); a.currentTime = 0; a.volume = 0.5; }).catch(()=>{});
+      audioCache[type] = a;
+    } catch(e) {}
+  });
+}
 
 function playMusic(type) {
   stopMusic();
-  const files = {
-    setup: 'music_setup.mp3',
-    draw: 'music_draw.mp3',
-    win: 'music_win.mp3'
-  };
+  const files = {setup:'music_setup.mp3', draw:'music_draw.mp3', win:'music_win.mp3'};
   if (!files[type]) return;
   try {
-    const audio = new Audio();
-    audio.src = files[type];
+    // استخدم الـ cache إذا موجود، وإلا أنشئ جديد
+    const audio = audioCache[type] || new Audio(files[type]);
+    audio.currentTime = 0;
     audio.loop = (type !== 'win');
     audio.volume = 0.5;
-    audio.load();
-    const p = audio.play();
-    if (p && p.catch) p.catch(() => {});
+    audio.play().catch(()=>{});
     currentAudio = audio;
+    // حدّث الـ cache
+    audioCache[type] = audio;
   } catch(e) {}
 }
 
@@ -545,7 +556,7 @@ function stopMusic() {
   try {
     if (currentAudio) {
       currentAudio.pause();
-      currentAudio.src = '';
+      currentAudio.currentTime = 0;
       currentAudio = null;
     }
   } catch(e) {}

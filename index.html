@@ -337,7 +337,7 @@ body::after{
       <div class="splash-color-dot"></div>
       <div class="splash-color-dot"></div>
     </div>
-    <button class="splash-btn" onclick="unlockAudio();goSetup();playMusic('setup')">🖌️ العب الآن!</button>
+    <button class="splash-btn" onclick="goSetup()">🖌️ العب الآن!</button>
     <div class="splash-creator">تصميم وتطوير: <span>أسامة النعيمي</span></div>
   </div>
 </div>
@@ -520,7 +520,6 @@ if('serviceWorker' in navigator){
 
 /* ══ BACKGROUND MUSIC ══ */
 let currentAudio = null;
-let audioUnlocked = false;
 
 const MUSIC = {
   setup: 'music_setup.mp3',
@@ -528,19 +527,15 @@ const MUSIC = {
   win:   'music_win.mp3'
 };
 
-function unlockAudio() {
-  // يُستدعى عند أول تفاعل لفتح AudioContext على iOS
-  audioUnlocked = true;
-}
-
 function playMusic(type) {
   stopMusic();
   if (!MUSIC[type]) return;
   try {
     const audio = new Audio(MUSIC[type]);
-    audio.loop = (type !== 'win'); // الفوز لا يلوب
+    audio.loop = (type !== 'win');
     audio.volume = 0.5;
-    audio.play().catch(() => {});
+    const playPromise = audio.play();
+    if (playPromise) playPromise.catch(() => {});
     currentAudio = audio;
   } catch(e) {}
 }
@@ -685,7 +680,7 @@ function go(id){
   document.getElementById(id).classList.add('on');
 }
 
-function goSetup(){SFX.click();go('setup');}
+function goSetup(){SFX.click();playMusic('setup');go('setup');}
 
 function addPlayer(team){
   const row=document.getElementById(`team${team}Players`);
@@ -771,11 +766,11 @@ function showWordReveal(){
 
 /* ══ DRAWING ══ */
 function startDrawing(){
+  stopMusic();
   go('drawing');
-  playMusic('draw');
   undoStack=[];
   G.savedDrawing=null;
-  setTimeout(()=>{initCanvas();startDrawTimer();},150);
+  setTimeout(()=>{initCanvas();startDrawTimer();playMusic('draw');},150);
 }
 
 function startDrawTimer(){
@@ -904,7 +899,7 @@ function showResults(){
   go('results');
 }
 
-function playAgain(){SFX.click();stopMusic();go('setup');}
+function playAgain(){SFX.click();stopMusic();playMusic('setup');go('setup');}
 
 /* ══ EFFECTS ══ */
 function showFlash(c){

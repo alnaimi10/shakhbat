@@ -2,7 +2,7 @@
   "name": "شخبط - لعبة الرسم",
   "short_name": "شخبط",
   "description": "لعبة الرسم والتخمين الجماعية",
-  "start_url": "/naaimicode/shakhbat_pwa.html",
+  "start_url": "/shakhbat/",
   "display": "standalone",
   "background_color": "#FFF5D6",
   "theme_color": "#E63946",

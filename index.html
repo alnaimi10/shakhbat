@@ -221,15 +221,16 @@ body::after{
 .tool-btn{background:#F5F0E8;border:2px solid rgba(0,0,0,.1);border-radius:7px;padding:4px 6px;cursor:pointer;font-size:16px;transition:all .2s;flex:1;text-align:center;}
 .tool-btn:active{transform:scale(.9);}
 .tool-btn.eraser{background:#f0f0f0;}
-#guessing{background:linear-gradient(135deg,#08144A,#0A1A6B);overflow:hidden;}
-.guess-content{text-align:center;padding:30px 20px;position:relative;z-index:2;width:100%;max-width:500px;}
+#guessing{background:linear-gradient(135deg,#08144A,#0A1A6B);overflow-y:auto;justify-content:flex-start;}
+.guess-content{text-align:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));position:relative;z-index:2;width:100%;max-width:500px;margin:0 auto;}
 .guess-drawing-preview{
-  background:var(--white);border-radius:20px;
-  margin:16px auto;overflow:hidden;
-  box-shadow:0 8px 30px rgba(0,0,0,.3);max-width:340px;
+  background:var(--white);border-radius:16px;
+  margin:10px auto;overflow:hidden;
+  box-shadow:0 8px 30px rgba(0,0,0,.3);max-width:320px;
+  max-height:40vh;
 }
-.guess-drawing-preview canvas{width:100%;display:block;}
-.guess-label{font-size:15px;color:rgba(255,255,255,.6);letter-spacing:2px;margin-bottom:12px;}
+.guess-drawing-preview canvas{width:100%;display:block;max-height:40vh;object-fit:contain;}
+.guess-label{font-size:14px;color:rgba(255,255,255,.6);letter-spacing:2px;margin-bottom:6px;margin-top:8px;}
 .guess-team{font-family:'Fredoka One',cursive;font-size:clamp(28px,7vw,48px);color:var(--gold);}
 .guess-timer-bar{height:8px;background:rgba(255,255,255,.15);border-radius:4px;margin:16px 0;overflow:hidden;}
 .guess-timer-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold));border-radius:4px;transition:width 1s linear;}
@@ -514,6 +515,52 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
 
+/* ══ BACKGROUND MUSIC ══ */
+let bgMusicNode=null, bgMusicGain=null, bgMusicCtx=null;
+
+function getBgCtx(){if(!bgMusicCtx)bgMusicCtx=new(window.AudioContext||window.webkitAudioContext)();return bgMusicCtx;}
+
+function playMusic(type){
+  stopMusic();
+  try{
+    const c=getBgCtx();
+    bgMusicGain=c.createGain();
+    bgMusicGain.gain.value=0.08;
+    bgMusicGain.connect(c.destination);
+
+    const patterns={
+      setup:[523,659,784,659,523,659,784,1047],
+      draw:[392,523,659,523,392,523,392,330],
+      win:[523,659,784,1047,784,659,523,659,784,1047]
+    };
+    const notes=patterns[type]||patterns.setup;
+    const tempo=type==='draw'?0.3:0.4;
+
+    function playLoop(startTime, loop){
+      notes.forEach((freq,i)=>{
+        const o=c.createOscillator();
+        const g=c.createGain();
+        o.connect(g);g.connect(bgMusicGain);
+        o.type='sine';o.frequency.value=freq;
+        const t=startTime+i*tempo;
+        g.gain.setValueAtTime(0,t);
+        g.gain.linearRampToValueAtTime(0.3,t+0.05);
+        g.gain.exponentialRampToValueAtTime(0.001,t+tempo*0.9);
+        o.start(t);o.stop(t+tempo);
+      });
+      const loopDur=notes.length*tempo;
+      if(loop<50){
+        setTimeout(()=>playLoop(c.currentTime+0.05, loop+1), loopDur*1000-200);
+      }
+    }
+    playLoop(c.currentTime+0.1, 0);
+  }catch(e){}
+}
+
+function stopMusic(){
+  try{if(bgMusicGain){bgMusicGain.gain.setValueAtTime(bgMusicGain.gain.value,getBgCtx().currentTime);bgMusicGain.gain.exponentialRampToValueAtTime(0.001,getBgCtx().currentTime+0.3);bgMusicGain=null;}}catch(e){}
+}
+
 /* ══ AUDIO ══ */
 let _ac;
 function aC(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();return _ac;}
@@ -666,6 +713,7 @@ function toggleCat(btn,cat){
 /* ══ GAME START ══ */
 function startGame(){
   SFX.start();
+  playMusic('setup');
   if(selectedCats.length===0){showToast('اختر فئة واحدة على الأقل!');return;}
   G.teams=[
     document.getElementById('team1Name').value||'الفريق الأحمر',
@@ -731,6 +779,7 @@ function showWordReveal(){
 /* ══ DRAWING ══ */
 function startDrawing(){
   go('drawing');
+  playMusic('draw');
   undoStack=[];
   G.savedDrawing=null;
   setTimeout(()=>{initCanvas();startDrawTimer();},150);
@@ -753,6 +802,7 @@ function startDrawTimer(){
 /* ══ GUESSING - FIXED ══ */
 function showGuessing(){
   clearInterval(G.drawTimer);
+  stopMusic();
 
   // ✅ حفظ الرسمة قبل تغيير الشاشة
   const srcCanvas=document.getElementById('canvas');
@@ -824,7 +874,7 @@ function scorePoint(correct){
 
 /* ══ RESULTS ══ */
 function showResults(){
-  SFX.win();spawnConfetti();spawnConfetti();
+  SFX.win();playMusic('win');spawnConfetti();spawnConfetti();
   const winner=G.scores[0]>G.scores[1]?0:G.scores[1]>G.scores[0]?1:-1;
   if(winner>=0){
     document.getElementById('resultsTitle').textContent='🏆 '+G.teams[winner]+' فاز!';
@@ -861,7 +911,7 @@ function showResults(){
   go('results');
 }
 
-function playAgain(){SFX.click();go('setup');}
+function playAgain(){SFX.click();stopMusic();go('setup');}
 
 /* ══ EFFECTS ══ */
 function showFlash(c){

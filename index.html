@@ -414,7 +414,7 @@ body::after{
   box-shadow:0 2px 8px rgba(0,0,0,.3);
 }
 .sound-ctrl:active{transform:scale(.9);}
-.sound-ctrl.hidden{display:none;}
+.sound-ctrl.hidden{display:none !important;}
 
 /* زر الصوت داخل هيدر الرسم */
 .draw-sound-btn{
@@ -641,6 +641,33 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
 
+/* ══ ORIENTATION CHANGE ══ */
+window.addEventListener('orientationchange', ()=>{
+  setTimeout(()=>{
+    const drawingOn = document.getElementById('drawing').classList.contains('on');
+    if(drawingOn){
+      const canvas = document.getElementById('canvas');
+      const savedData = undoStack.length ? undoStack[undoStack.length-1] : null;
+      requestAnimationFrame(()=>{
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = Math.floor(rect.width) || window.innerWidth;
+        canvas.height = Math.floor(rect.height) || window.innerHeight;
+        ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFEF7';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        // أعد رسم آخر حالة
+        if(savedData){
+          const img = new Image();
+          img.onload = ()=> ctx.drawImage(img,0,0,canvas.width,canvas.height);
+          img.src = savedData;
+        }
+      });
+    }
+  }, 300);
+});
+
 /* ══ SOUND CONTROL ══ */
 let soundOn = true;
 
@@ -650,7 +677,18 @@ function toggleSound(){
   document.getElementById('soundCtrl').textContent = icon;
   const drawBtn = document.getElementById('drawSoundBtn');
   if(drawBtn) drawBtn.textContent = icon;
-  if(!soundOn) stopMusic();
+  if(!soundOn){
+    stopMusic();
+  } else {
+    // أعد تشغيل الموسيقى المناسبة للشاشة الحالية
+    const currentScreen = document.querySelector('.scr.on');
+    if(currentScreen){
+      const id = currentScreen.id;
+      if(id === 'drawing') playMusic('draw');
+      else if(id === 'results') playMusic('win');
+      else playMusic('setup');
+    }
+  }
   showToast(soundOn ? '🔊 الصوت شغّال' : '🔇 الصوت مطفي');
 }
 

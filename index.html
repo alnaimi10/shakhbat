@@ -397,12 +397,28 @@ body::after{
   box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap;
 }
 .toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ══ SOUND CONTROL ══ */
+.sound-ctrl{
+  position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:14px;
+  z-index:9999;
+  background:rgba(0,0,0,.35);
+  border:none;border-radius:50%;
+  width:40px;height:40px;
+  font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);
+  transition:all .2s;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+}
+.sound-ctrl:active{transform:scale(.9);}
 </style>
 </head>
 <body>
 
 <div class="flash" id="flash"></div>
 <div class="toast" id="toast"></div>
+<button class="sound-ctrl" id="soundCtrl" onclick="toggleSound()">🔊</button>
 
 <!-- ══ SPLASH ══ -->
 <div id="splash" class="scr on">
@@ -608,12 +624,22 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
 
+/* ══ SOUND CONTROL ══ */
+let soundOn = true;
+
+function toggleSound(){
+  soundOn = !soundOn;
+  document.getElementById('soundCtrl').textContent = soundOn ? '🔊' : '🔇';
+  if(!soundOn) stopMusic();
+  else if(currentAudio === null) playMusic('setup');
+  showToast(soundOn ? '🔊 الصوت شغّال' : '🔇 الصوت مطفي');
+}
+
 /* ══ BACKGROUND MUSIC ══ */
 let currentAudio = null;
 const audioCache = {};
 
 function preloadAllMusic() {
-  // تحميل كل الأغاني عند أول تفاعل حتى تعمل لاحقاً على iOS
   ['setup','draw','win'].forEach(type => {
     const files = {setup:'music_setup.mp3', draw:'music_draw.mp3', win:'music_win.mp3'};
     try {
@@ -626,18 +652,17 @@ function preloadAllMusic() {
 }
 
 function playMusic(type) {
+  if(!soundOn) return;
   stopMusic();
   const files = {setup:'music_setup.mp3', draw:'music_draw.mp3', win:'music_win.mp3'};
   if (!files[type]) return;
   try {
-    // استخدم الـ cache إذا موجود، وإلا أنشئ جديد
     const audio = audioCache[type] || new Audio(files[type]);
     audio.currentTime = 0;
     audio.loop = (type !== 'win');
     audio.volume = 0.5;
     audio.play().catch(()=>{});
     currentAudio = audio;
-    // حدّث الـ cache
     audioCache[type] = audio;
   } catch(e) {}
 }
@@ -656,6 +681,7 @@ function stopMusic() {
 let _ac;
 function aC(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();return _ac;}
 function tone(f,d,t='sine',v=0.15,delay=0){
+  if(!soundOn) return;
   try{
     const c=aC(),o=c.createOscillator(),g=c.createGain();
     o.connect(g);g.connect(c.destination);

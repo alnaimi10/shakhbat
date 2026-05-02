@@ -176,9 +176,99 @@ body::after{
 .draw-header{
   background:linear-gradient(135deg,var(--red),#C1121F);
   padding:10px 14px;
+  padding-top:calc(10px + env(safe-area-inset-top,0px));
   display:flex;align-items:center;justify-content:space-between;
   flex-shrink:0;
   box-shadow:0 3px 10px rgba(0,0,0,.2);
+  min-height:50px;
+}
+
+/* ══ LANDSCAPE ALL SCREENS ══ */
+@media (orientation: landscape) {
+  /* Splash */
+  #splash{overflow-y:auto;justify-content:flex-start;}
+  .splash-content{gap:6px;padding:8px 20px 16px;}
+  .splash-brush{font-size:36px;}
+  .splash-title{font-size:clamp(36px,9vw,70px);}
+  .splash-subtitle{font-size:11px;}
+  .splash-colors{gap:6px;}
+  .splash-color-dot{width:10px;height:10px;}
+  .splash-btn{padding:10px 36px;font-size:16px;}
+  .splash-creator{font-size:10px;}
+
+  /* Setup */
+  #setup{padding:10px 16px;}
+
+  /* Turn Announce */
+  #turn-announce{overflow-y:auto;justify-content:flex-start;}
+  .ta-content{padding:12px 20px;}
+  .ta-icon{font-size:36px;}
+  .ta-name{font-size:clamp(22px,5vw,36px);}
+  .ta-scores{margin:8px 0;}
+  .ta-score{padding:6px 14px;}
+
+  /* Word Reveal */
+  #word-reveal{overflow-y:auto;justify-content:flex-start;}
+  .wr-content{padding:12px 20px;}
+  .wr-word{font-size:clamp(28px,7vw,56px);}
+  .wr-timer{width:60px;height:60px;margin:8px auto;}
+  .wr-timer svg{width:60px;height:60px;}
+  .wr-timer-num{font-size:24px;}
+
+  /* Drawing - landscape layout ✅ */
+  #drawing{flex-direction:row !important;align-items:stretch;}
+  .draw-header{
+    flex-direction:column !important;
+    width:50px !important;
+    min-width:50px !important;
+    height:100% !important;
+    padding:calc(6px + env(safe-area-inset-top,0px)) 6px 6px !important;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:3px 0 10px rgba(0,0,0,.2);
+    flex-shrink:0;
+  }
+  .draw-title{font-size:10px !important;writing-mode:vertical-rl;}
+  .draw-timer-pill{font-size:13px !important;padding:3px 5px !important;min-width:unset !important;}
+  #canvas{
+    flex:1 !important;
+    width:0 !important;
+    min-width:0 !important;
+    height:100% !important;
+    min-height:0 !important;
+  }
+  .draw-toolbar{
+    flex-direction:column !important;
+    width:100px !important;
+    min-width:100px !important;
+    height:100% !important;
+    padding:6px !important;
+    padding-right:calc(6px + env(safe-area-inset-right,0px)) !important;
+    border-top:none !important;
+    border-left:3px solid rgba(0,0,0,.1);
+    overflow-y:auto;
+    flex-shrink:0;
+    gap:4px;
+  }
+  .tb-left{width:100% !important;flex-direction:column !important;}
+  .tb-sizes{flex-direction:row !important;gap:2px;}
+  .tb-actions{flex-direction:row !important;gap:2px;}
+  .size-btn{font-size:10px;padding:3px 4px;}
+  .tool-btn{font-size:13px;padding:3px 4px;}
+  .tb-right{
+    flex-direction:row !important;flex-wrap:wrap !important;
+    overflow-y:auto !important;overflow-x:hidden !important;
+    gap:4px;padding:4px;flex:1;align-content:flex-start;
+  }
+  .color-btn{width:24px !important;height:24px !important;}
+
+  /* Guessing */
+  #guessing{overflow-y:auto;justify-content:flex-start;}
+  .guess-content{padding:10px 16px;}
+  .guess-drawing-preview{max-height:32vh;max-width:240px;}
+
+  /* Results */
+  #results{padding:10px;}
 }
 .draw-title{font-family:'Fredoka One',cursive;font-size:20px;color:#fff;}
 .draw-timer-pill{
@@ -621,15 +711,18 @@ let undoStack=[];
 
 function initCanvas(){
   const canvas=document.getElementById('canvas');
-  const rect=canvas.getBoundingClientRect();
-  canvas.width=Math.floor(rect.width)||window.innerWidth;
-  canvas.height=Math.floor(rect.height)||(window.innerHeight-160);
-  ctx=canvas.getContext('2d');
-  ctx.fillStyle='#FFFEF7';
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.lineCap='round';ctx.lineJoin='round';
-  undoStack=[];
-  saveUndo();
+  // انتظر حتى يأخذ الـ canvas مساحته الحقيقية
+  requestAnimationFrame(()=>{
+    const rect=canvas.getBoundingClientRect();
+    canvas.width=Math.floor(rect.width)||window.innerWidth;
+    canvas.height=Math.floor(rect.height)||window.innerHeight;
+    ctx=canvas.getContext('2d');
+    ctx.fillStyle='#FFFEF7';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.lineCap='round';ctx.lineJoin='round';
+    undoStack=[];
+    saveUndo();
+  });
   canvas.addEventListener('mousedown',startDraw);
   canvas.addEventListener('mousemove',draw);
   canvas.addEventListener('mouseup',endDraw);
@@ -638,7 +731,10 @@ function initCanvas(){
   canvas.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];const r=canvas.getBoundingClientRect();draw({offsetX:t.clientX-r.left,offsetY:t.clientY-r.top});},{passive:false});
   canvas.addEventListener('touchend',endDraw);
 }
-function startDraw(e){isDrawing=true;[lastX,lastY]=[e.offsetX,e.offsetY];ctx.beginPath();ctx.moveTo(lastX,lastY);}
+let drawMusicStarted = false;
+function startDraw(e){
+  isDrawing=true;[lastX,lastY]=[e.offsetX,e.offsetY];ctx.beginPath();ctx.moveTo(lastX,lastY);
+}
 function draw(e){
   if(!isDrawing)return;
   ctx.globalCompositeOperation=isEraser?'destination-out':'source-over';
@@ -749,7 +845,8 @@ function showTurnAnnounce(){
 /* ══ WORD REVEAL ══ */
 function showWordReveal(){
   SFX.click();
-  playMusic('draw'); // ✅ تشغيل موسيقى الرسم هنا — عند ضغطة المستخدم
+  stopMusic();
+  playMusic('draw');
   const cat=G.categories[Math.floor(Math.random()*G.categories.length)];
   const words=WORDS[cat];
   G.currentWord=words[Math.floor(Math.random()*words.length)];
